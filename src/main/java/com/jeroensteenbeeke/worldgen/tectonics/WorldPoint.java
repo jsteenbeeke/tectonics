@@ -1,32 +1,30 @@
 package com.jeroensteenbeeke.worldgen.tectonics;
 
+import com.jeroensteenbeeke.hyperion.util.Asserts;
+
 public class WorldPoint {
-	private final int x;
+	private final long x;
 
-	private final int y;
+	private final long y;
 
-	public WorldPoint(int x, int y) {
-		super();
+	public WorldPoint(long x, long y) {
 		this.x = x;
 		this.y = y;
 	}
 
-	public int getX() {
+	public long getX() {
 		return x;
 	}
 
-	public int getY() {
+	public long getY() {
 		return y;
 	}
 
-	public int toIndex(final WorldDimension dim) {
-		if (x >= dim.getWidth()) {
-			throw new RuntimeException("Worldpoint X outside of bounds");
-		}
-		if (y >= dim.getHeight()) {
-			throw new RuntimeException("WorldpointY  outside of bounds");
-		}
-		return y * dim.getWidth() + x;
+	public long toIndex(final WorldDimension dim) {
+		return Asserts.numberVariable("y").withValue(y).atMost(dim.getHeight())
+				* dim.getWidth()
+				+ Asserts.numberVariable("x").withValue(x)
+						.atMost(dim.getWidth());
 	}
 
 }
