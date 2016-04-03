@@ -66,10 +66,11 @@ public class Noise {
 			float[] squareTmp = new float[(int) (side * side)];
 
 			for (int y = 0; y < tmpDim.getHeight(); y++) {
-				for (int x = 0; x <= tmpDim.getWidth(); x++) {
-					squareTmp[(int) (x + y * side)] = map[(int) (x + y
-							* tmpDim.getWidth())];
-				}
+				final int sourcePos = (int) (y * tmpDim.getWidth());
+				final int targetPos = (int) (y * side);
+				final int amount = (int) (Float.BYTES * tmpDim.getWidth());
+
+				System.arraycopy(map, sourcePos, squareTmp, targetPos, amount);
 			}
 			// to make it tileable we need to insert proper values in the
 			// padding area
@@ -135,59 +136,49 @@ public class Noise {
 
 		int i;
 		long temp;
-		long x, y;
-		long dx;
-		long dy;
-		long x0, x1, y0, y1;
-		int p0;
-		int p1;
-		int p2, p3;
-		long step;
-		long line_jump, masked;
+		int x, y, dx, dy;
+		int x0, x1, y0, y1;
+		int p0, p1, p2, p3;
+		int step, line_jump, masked;
 		float slope, sum, center_sum;
 		i = 0;
 		temp = size - 1;
 		// MUST EQUAL TO 2^x + 1!
-		if ((temp & (temp - 1) | temp & 3) == 0) {
+		if (CPP.eval(temp & (temp - 1)) || CPP.eval(temp & 3)) {
 			throw new IllegalArgumentException("Side should be 2**n +1");
 		}
 		temp = size;
 		slope = rgh;
-		step = size & ~1;
+		step = (int) (size & ~1);
 
 		/* Calculate midpoint ("diamond step"). */
-		dy = step * size;
-
-		sum = CALC_SUM(map[0], map[(int) step], map[(int) dy],
-				map[(int) (dy + step)], randFloat(randsource), slope);
-		SAVE_SUM(i, map, sum);
+		dy = (int) (step * size);
+		sum = avg(map[0], map[step], map[dy], map[dy + step]) + slope
+				* Rand.getFloat(randsource);
+		saveSum(map, i, sum);
 		center_sum = sum;
 
 		/* Calculate each sub diamonds' center points ("square step"). */
 		/* Top row. */
-		p0 = (int) (step >> 1);
-
-		SAVE_SUM(
-				p0,
-				map,
-				CALC_SUM(map[0], map[(int) step], center_sum, center_sum,
-						randFloat(randsource), slope));
+		p0 = step >> 1;
+		sum = avg(map[0], map[step], center_sum, center_sum) + slope
+				* Rand.getFloat(randsource);
+		sum = sum + slope * Rand.getFloat(randsource);
+		saveSum(map, p0, sum);
 		/* Left column. */
 		p1 = (int) (p0 * size);
-
-		SAVE_SUM(
-				p1,
-				map,
-				CALC_SUM(map[0], map[(int) dy], center_sum, center_sum,
-						randFloat(randsource), slope));
-		map[(int) (full_size + p0 - size)] = map[(int) p0]; /*
-															 * Copy top val into
-															 * btm row.
-															 */
-		map[(int) (p1 + size - 1)] = map[(int) p1]; /*
-													 * Copy left value into
-													 * right column.
+		sum = avg(map[0], map[dy], center_sum, center_sum) + slope
+				* Rand.getFloat(randsource);
+		sum = sum + slope * Rand.getFloat(randsource);
+		saveSum(map, p1, sum);
+		map[(int) (full_size + p0 - size)] = map[p0]; /*
+													 * Copy top val into btm
+													 * row.
 													 */
+		map[(int) (p1 + size - 1)] = map[p1]; /*
+											 * Copy left value into right
+											 * column.
+											 */
 		slope *= rgh;
 		step >>= 1;
 
@@ -197,17 +188,16 @@ public class Noise {
 			 * Calc midpoint of sub squares on the map ("diamond step"). *
 			 *************************************************************/
 			dx = step;
-			dy = step * size;
+			dy = (int) (step * size);
 			i = (int) ((step >> 1) * (size + 1));
-			line_jump = step * size + 1 + step - size;
+			line_jump = (int) (step * size + 1 + step - size);
 			for (y0 = 0, y1 = dy; y1 < size * size; y0 += dy, y1 += dy) {
 				for (x0 = 0, x1 = dx; x1 < size; x0 += dx, x1 += dx, i += step) {
-					sum = (map[(int) (y0 + x0)] + map[(int) (y0 + x1)]
-							+ map[(int) (y1 + x0)] + map[(int) (y1 + x1)]) * 0.25f;
-					sum = sum + slope * randFloat(randsource);
-					masked = CPP.negate((int) map[(int) i]);
-					map[(int) i] = map[(int) i] * CPP.negate(masked) + sum
-							* masked;
+					sum = (map[y0 + x0] + map[y0 + x1] + map[y1 + x0] + map[y1
+							+ x1]) * 0.25f;
+					sum = sum + slope * Rand.getFloat(randsource);
+					masked = CPP.negate((int) map[i]);
+					map[i] = map[i] * CPP.negate(masked) + sum * masked;
 				}
 				/*
 				 * There's additional step taken at the end of last valid loop.
@@ -224,8 +214,8 @@ public class Noise {
 			 * of last iteration and its top and bottom vertices from the
 			 * "diamond step" we just performed.
 			 *************************************************************/
-			i = (int) (step >> 1);
-			p0 = (int) step; /* right */
+			i = step >> 1;
+			p0 = step; /* right */
 			p1 = (int) (i * size + i); /* bottom */
 			p2 = 0; /* left */
 			p3 = (int) (full_size + i - (i + 1) * size); /* top (wrapping edges) */
@@ -233,7 +223,7 @@ public class Noise {
 			/* Calculate "diamond" values for top row in map. */
 			while (p0 < size) {
 				sum = (map[p0] + map[p1] + map[p2] + map[p3]) * 0.25f;
-				sum = sum + slope * randFloat(randsource);
+				sum = sum + slope * Rand.getFloat(randsource);
 				masked = CPP.negate((int) map[i]);
 				map[i] = map[i] * CPP.negate(masked) + sum * masked;
 				/* Copy it into bottom row. */
@@ -254,7 +244,7 @@ public class Noise {
 			 */
 			for (y = step >> 1, temp = 0; y < size - (step >> 1); y += step >> 1, temp = CPP
 					.negate(temp)) {
-				p0 = (int) (step >> 1); /* right */
+				p0 = step >> 1; /* right */
 				p1 = (int) (p0 * size); /* bottom */
 				p2 = -p0; /* left */
 				p3 = -p1; /* top */
@@ -272,7 +262,7 @@ public class Noise {
 				 */
 				for (; x < size - (step >> 1); x += step) {
 					sum = (map[p0] + map[p1] + map[p2] + map[p3]) * 0.25f;
-					sum = sum + slope * randFloat(randsource);
+					sum = sum + slope * Rand.getFloat(randsource);
 					masked = CPP.negate((int) map[i]);
 					map[i] = map[i] * CPP.negate(masked) + sum * masked;
 					p0 += step;
@@ -297,16 +287,12 @@ public class Noise {
 		return (0);
 	}
 
-	private static float randFloat(Random randsource) {
-		return randsource.nextFloat() - 0.5f;
+	private static float avg(float f, float g, float h, float i) {
+		return (f + g + h + i) * 0.25f;
+
 	}
 
-	private static float CALC_SUM(float a, float b, float c, float d,
-			float rnd, float slope) {
-		return (((a) + (b) + (c) + (d)) * 0.25f) + slope * rnd;
-	}
-
-	private static void SAVE_SUM(int a, float[] map, float sum) {
+	private static void saveSum(float[] map, int a, float sum) {
 		boolean isZero = (int) map[a] == 0;
 		if (isZero) {
 			map[a] = sum;

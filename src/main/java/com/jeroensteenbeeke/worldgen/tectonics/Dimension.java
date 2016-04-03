@@ -41,4 +41,30 @@ public class Dimension {
 	public Dimension grow(long amountX, long amountY) {
 		return new Dimension(width + amountX, height + amountY);
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (int) (height ^ (height >>> 32));
+		result = prime * result + (int) (width ^ (width >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof Dimension))
+			return false;
+		Dimension other = (Dimension) obj;
+		if (height != other.height)
+			return false;
+		if (width != other.width)
+			return false;
+		return true;
+	}
+
 }

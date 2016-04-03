@@ -33,8 +33,8 @@ public class WorldDimension extends Dimension {
 		return (safeY(y) + height) % getHeight();
 	}
 
-	public long indexOf(long x, long y) {
-		return safeY(y) * width + safeX(x);
+	public int indexOf(long x, long y) {
+		return (int) (safeY(y) * width + safeX(x));
 	}
 
 	private Long safeX(long x) {
@@ -50,7 +50,7 @@ public class WorldDimension extends Dimension {
 				.between(0L, getArea() - 1);
 	}
 
-	public long lineIndex(long y) {
+	public int lineIndex(long y) {
 		return indexOf(0, safeY(y));
 	}
 
@@ -80,4 +80,5 @@ public class WorldDimension extends Dimension {
 	public long largerSize() {
 		return Math.max(width, height);
 	}
+
 }

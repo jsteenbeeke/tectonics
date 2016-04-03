@@ -6,6 +6,10 @@ public class IndexMap extends Matrix<Long> {
 		super(width, height);
 	}
 
+	public IndexMap(Long[] values, long width, long height) {
+		super(values, width, height);
+	}
+
 	public IndexMap(IndexMap other) {
 		super(other);
 	}

@@ -73,4 +73,12 @@ class PlateArea {
 		this.height = height;
 	}
 
+	public void incrementHeight() {
+		this.height++;
+	}
+
+	public void incrementWidth() {
+		this.width++;
+	}
+
 }
